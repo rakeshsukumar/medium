@@ -1,0 +1,83 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Dec 17 23:32:39 2020
+"""
+
+import os
+import sys
+import logging
+import pandas as pd
+import time
+
+#ip=input('Enter 1 for CLTB, 2 for CLTG and 3 for CLTE: ')
+
+
+# =============================================================================
+
+ip_loc = '/sharedfoldername/'
+usr = 'ASB'
+cncpt = 'HC'
+dept = 'HH'
+
+histTSPath = os.path.join('file:'+ip_loc+usr + "_" + cncpt + "_" + dept + "_FCST_HADS.txt")
+leadTSPath = os.path.join('file:'+ip_loc+ usr + "_" + cncpt + "_" + dept + "_FCST_LADS.txt")
+from ML_Production_29122020 import *
+
+
+logging_(f"{usr}_{cncpt}_{dept}_ML.log")
+
+
+hads,dataframes_hads = HADS_data(histTSPath)
+lads, dataframes_lads = LADS_data(leadTSPath)
+
+print(hads.shape)
+print(lads.shape)
+
+#target_var = 'RTL_QTY'
+
+primary_key = ['STND_TRRTRY_NM','KEY','TRDNG_WK_STRT_DT','TRDNG_WK_END_DT']
+product_hrchy = ['GRP_NM', 'DPT_NM', 'CLSS_NM', 'SUB_CLSS_NM','ITM_CD']
+#target_var = 'RTL_QTY'
+binary_lag_var = ["FLG_RAMADAN","FLG_GR8_DEAL","FLG_GV_PROMO",
+                  "FLG_FLAT_DISC","FLG_SALE","FLG_RGN_SALE","FLG_RGN_DISC"]
+continuous_lag_var = ["DISC_PER","DSP_STR","TOT_STR"]
+binary_no_lag_var = ["OOS_PER_B","OOS_PER_C",
+                     "OOS_PER_A","FLG_PROMO_CATG1","FLG_PROMO_CATG2",
+                     "FLG_PROMO_CATG3","FLG_PROMO_CATG4","FLG_NATIONAL_DAY","FLG_KIDS_PROMO",
+                     "FLG_FUR_DISC","FLG_MOTHER_DAY",
+                     "FLG_ANNIVERSARY","FLG_RGN_DISC"]
+
+key_feature = ['FLG_RAMADAN',"DISC_PER","OOS_PER_B","OOS_PER_C","OOS_PER_A","FLG_FLAT_DISC","FLG_SALE","FLG_RGN_SALE"]
+
+
+lag_termc = 3
+ft_term = 4
+lag = 10
+trainDF_row = 104
+leadDF_row = 52
+
+
+params_feat_input=[lag_termc, ft_term, lag,trainDF_row,leadDF_row]
+
+st=time.time()
+Out_tst=run_models(dataframes_hads,dataframes_lads, primary_key,product_hrchy,binary_lag_var, continuous_lag_var, binary_no_lag_var, key_feature, params_feat_input)
+Out_tst_ = pd.concat([i[0] for i in Out_tst]).reset_index(drop = True)
+Out_DF_ =  pd.concat([i[1] for i in Out_tst]).reset_index(drop = True)
+er = time.time()
+time_taken = er-st
+logging.info('Time taken on all cores in seconds for the ML Code is  ' + str(time_taken))
+print(f"{time_taken} seconds on all cores")    
+#print(f"{time_taken1} seconds for loop")
+Out_tst_ = pd.concat([i[0] for i in Out_tst]).reset_index(drop = True)
+Out_tst_=Out_tst_.sort_values(by = ['STND_TRRTRY_NM','KEY','TRDNG_WK_END_DT'])
+file_nm_fcst = f"{usr}_{cncpt}_{dept}_"+"ML_Final_Forecast.txt"
+Out_tst_.to_csv(file_nm_fcst,index=False,sep=",")
+
+
+Out_DF_ =  pd.concat([i[1] for i in Out_tst]).reset_index(drop = True)
+Out_DF_ =Out_DF_ .sort_values(by = ['STND_TRRTRY_NM','KEY'])
+file_var_out = f"{usr}_{cncpt}_{dept}_"+"ML_Final_Variables.txt"
+Out_DF_.to_csv(file_var_out ,index=False,sep=",")
+
+
+
