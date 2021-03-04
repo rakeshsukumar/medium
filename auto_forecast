@@ -1,0 +1,167 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Sep 14 23:32:03 2020
+
+@author: 127600
+"""
+
+import numpy as np
+import pandas as pd
+import sklearn as sk
+import math
+import os
+import csv
+from datetime import datetime
+import subprocess
+
+pd.set_option("display.max.columns", None)
+pd.set_option("display.precision", 2)
+
+usr = 'INV_MGMT'
+business = 'SP'
+date = '202112'
+
+ip_path = "D:\INV_MGMT APP Pipeline"
+op_path = "D:\INV_MGMT APP Pipeline"
+code_path = "D:\INV_MGMT APP Pipeline"
+
+targetTS = 'RTL_QTY'
+binary_lag_var = ['FLG_SU_EOSS','FLG_WN_EOSS','FLG_SP_EOSS','FLG_RAMADAN','FLG_EID','FLG_MID_SSN_OFFER']
+continuous_lag_var = ['DISC_PER','DSP_STR']
+binary_nolag_var = ['FLG_NATIONAL_DAY','FLG_BTS','FLG_SALE','FLG_PART_SALE','OOS_PER_A','OOS_PER_B','OOS_PER_C','FLG_PROMO_CATG1','FLG_PROMO_CATG2','FLG_PROMO_CATG3','FLG_PROMO_CATG4']
+regVar = ['FLG_SU_EOSS','FLG_WN_EOSS','FLG_SP_EOSS','FLG_RAMADAN','FLG_EID','FLG_MID_SSN_OFFER','DISC_PER','DSP_STR','FLG_NATIONAL_DAY','FLG_BTS','FLG_SALE','OOS_PER_A','OOS_PER_B','OOS_PER_C','FLG_PROMO_CATG1','FLG_PROMO_CATG2','FLG_PROMO_CATG3','FLG_PROMO_CATG4']
+
+lead_prd = 52
+
+histTSPath = os.path.join(ip_path + "\\" + usr + "_" + business + "_" + date + "_FCST_HADS.txt")
+leadTSPath = os.path.join(ip_path + "\\" + usr + "_" + business + "_" + date + "_FCST_LADS.txt")
+
+histDF = pd.read_csv(histTSPath, sep=',')
+leadDF = pd.read_csv(leadTSPath, sep=',')
+
+histDF[targetTS] = histDF[targetTS].apply(lambda x: 0 if x <= 0 else x)
+
+
+## ETS CODE INTEGRATION : START ##
+## EDITED BY VINIT ##
+
+Rscript_path = os.path.join(ip_path + "\\" + "test.r")
+Rscript_path
+
+Rhome = "C:/Users/127600/DOCUME~1/R/R-36~1.2/bin/Rscript"
+arg1 = 'D:/INV_MGMT APP Pipeline'
+#ETSscript = test.r
+
+subprocess.call([Rhome, "--args", "D:/INV_MGMT APP Pipeline", "D:/INV_MGMT APP Pipeline/test.r"], shell=True)
+
+ets_start_time = datetime.now().strftime("%H:%M:%S")
+print("ETS Forecast start time : " + ets_start_time)
+
+
+
+ets_end_time = datetime.now().strftime("%H:%M:%S")
+print("ETS Forecast end time : " + ets_end_time)
+
+print("ETS Forecast run time : " + datetime.strptime(ets_end_time, '%H:%M:%S') - datetime.strptime(ets_start_time, '%H:%M:%S')))
+
+ets_run_time = datetime.strptime(ets_end_time, '%H:%M:%S') - datetime.strptime(ets_start_time, '%H:%M:%S')
+ets_run_time
+
+
+type(ets_start_time)
+
+histDF.loc(histDF[targetTS] <= 0,  = ifelse(histDF[targetTS] <= 0 , 0 , histDF[targetTS])
+
+print(type(histDF))
+print(histDF['RTL_QTY'].info())
+
+histDF.shape
+len(histDF)
+histDF.head()
+
+histDF[targetTS].min()
+
+
+## ETS CODE INTEGRATION : END ##
+
+##***************************************Prophet CODE INTEGRATION : START******************************************* ##
+##***************************************Created BY rsk********************************************************** ##
+import sys
+sys.path.append(code_path)  #where Prophet_production is there
+from Prophet_Production import *
+import sys
+#logging************************************
+
+log_path = os.path.join(op_path + "/" + usr + "_" + business + "_" + date + "all_logs.log")
+logging_(log_path)
+
+# HADS dataframe and list of dataframe
+df , dataframes = HADS_data(histTSPath)
+
+# LADS dataframe
+df_test = LADS_data(leadTSPath)
+
+#regressors
+cols_t = df_test.columns.to_list()
+cols_h =df.columns.to_list()
+def IntersecOfSets(arr1, arr2, arr3): 
+    # Converting the arrays into sets 
+    s1 = set(arr1) 
+    s2 = set(arr2) 
+    s3 = set(arr3) 
+      
+    # Calculates intersection of  
+    # sets on s1 and s2 
+    set1 = s1.intersection(s2)         #[80, 20, 100] 
+      
+    # Calculates intersection of sets 
+    # on set1 and s3 
+    result_set = set1.intersection(s3) 
+      
+    # Converts resulting set to list 
+    final_list = list(result_set) 
+    return final_list
+
+reg_pro = IntersecOfSets(cols_t, cols_h, regVar)
+peak_var_pro = ['FLG_NATIONAL_DAY', 'FLG_RAMADAN', 'FLG_EID2','FLG_BTS' , 'FLG_EID']
+
+
+
+#********************** HyperParameter Tuning***********************************************************************
+
+result = run_tuning(dataframes, reg_pro, peak_var_pro)
+param_ = pd.concat(result).reset_index(drop = True)
+param_Path = os.path.join(op_path + "/" + usr + "_" + business + "_" + date + "pro_params.csv")
+param_.to_csv(param_Path,index = False)
+param_ = pd.read_csv(param_Path,converters={'Parameters': eval})
+
+#*********Final Iterable for final forecast************************************************
+
+train_l = []
+test_l = []
+p_list = []
+col_l = []  
+peak_v = []
+for i in range(len(param_)):
+    
+    test_l.append(df_test[(df_test['Territory'] == param_['Territory'].iloc[i]) & (df_test['KEY'] == param_['KEY'].iloc[i])])
+    train_l.append(df[(df['Territory'] == param_['Territory'].iloc[i]) & (df['KEY'] == param_['KEY'].iloc[i])])
+    p_list.append(param_['Parameters'][i])
+    col_l.append(reg_pro)
+    peak_v.append(peak_var_pro)
+
+iterable = list(zip(train_l, test_l, p_list, col_l, peak_v))
+
+#***************************************Final Forecast***************************************************
+
+fore_all = run_fore(iterable)
+
+final_forecast = pd.concat(fore_all).reset_index(drop = True)
+final_forecast = final_forecast.rename(columns={'ds': 'TRDNG_WK_END_DT', 'y': 'RTL_QTY','yhat':'PRO_FCST'})
+final_forecast = final_forecast[['Territory', 'TRDNG_WK_END_DT', 'KEY', 'RTL_QTY', 'PRO_FCST', 'PRO_FLG']]
+
+outpath = os.path.join(op_path + "/" + usr + "_" + business + "_" + date + "_PRO_OUT.csv")
+final_forecast.to_csv(outpath, index = False)
+
+##******************************************************PROPHET CODE INTEGRATION : END ##********************************
+
