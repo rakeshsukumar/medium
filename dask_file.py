@@ -48,7 +48,7 @@ def HADS_data(path):
     df = pd.read_csv(path, delimiter= ',')
     df['TRDNG_WK_END_DT'] = pd.to_datetime(df['TRDNG_WK_END_DT'], infer_datetime_format = True)
     df = df.rename(columns={'TRDNG_WK_END_DT': 'ds', 'RTL_QTY': 'y'})
-    gb = df.groupby(['STND_TRRTRY_NM', 'KEY'])
+    gb = df.groupby(['territory', 'KEY'])
     dataframes = [gb.get_group(x) for x in gb.groups]
     return df , dataframes
 
@@ -154,12 +154,12 @@ def param_tuning(train, client, cols, peak_var):
             parameters = pd.DataFrame(columns = ['horizon','rmse','mape', 'params'])
             parameters = parameters.append({'horizon':horizon, 'params':params},ignore_index=True)
 
-        parameters['STND_TRRTRY_NM'] = train['STND_TRRTRY_NM'].iloc[0]
+        parameters['territory'] = train['territory'].iloc[0]
         parameters['KEY'] = train['KEY'].iloc[0]
 
         return parameters
     except:
-        logging.error('error occcured for ' + str(train['STND_TRRTRY_NM'].iloc[0]) + str(' ') + str(train['KEY'].iloc[0]))
+        logging.error('error occcured for ' + str(train['territory'].iloc[0]) + str(' ') + str(train['KEY'].iloc[0]))
         pass 
     
 
@@ -170,14 +170,14 @@ def forecast_(train, test, p, cols, peak_var):
             train = train.sort_values(by=['ds'])
             test = test.sort_values(by=['ds'])
             full_forecast = pd.concat([train, test])
-            full_forecast = full_forecast[['ds', 'y' ,'KEY' , 'STND_TRRTRY_NM', 'TRDNG_WK_STRT_DT', 'GRP_NM', 'DPT_NM', 'CLSS_NM', 'SUB_CLSS_NM']]
+            full_forecast = full_forecast[['ds', 'y' ,'KEY' , 'territory', 'TRDNG_WK_STRT_DT', 'GRP_NM', 'DPT_NM', 'CLSS_NM', 'SUB_CLSS_NM']]
             full_forecast['yhat'] = None
             full_forecast['PRO_FLG'] =0
             
             return full_forecast
          
         except:
-            logging.error('error occcured for ' + str(test['STND_TRRTRY_NM'].iloc[0]) + str(' ') + str(test['KEY'].iloc[0]))
+            logging.error('error occcured for ' + str(test['territory'].iloc[0]) + str(' ') + str(test['KEY'].iloc[0]))
             pass 
     else:
         try:
@@ -223,7 +223,7 @@ def forecast_(train, test, p, cols, peak_var):
             future_pd = pd.merge(future_pd, d_,  on ='ds')
             forecast_pd = m.predict( future_pd )
             final = forecast_pd[['ds', 'yhat' ]]
-            full_forecast = pd.merge(final,d_[['ds', 'y' ,'KEY' , 'STND_TRRTRY_NM', 'TRDNG_WK_STRT_DT', 'GRP_NM', 'DPT_NM', 'CLSS_NM', 'SUB_CLSS_NM']] )
+            full_forecast = pd.merge(final,d_[['ds', 'y' ,'KEY' , 'territory', 'TRDNG_WK_STRT_DT', 'GRP_NM', 'DPT_NM', 'CLSS_NM', 'SUB_CLSS_NM']] )
             full_forecast['TRDNG_WK_STRT_DT'] = pd.to_datetime(full_forecast['TRDNG_WK_STRT_DT'], infer_datetime_format = True)
             full_forecast['PRO_FLG'] = 1
             
@@ -235,7 +235,7 @@ def forecast_(train, test, p, cols, peak_var):
             return full_forecast
         
         except:
-            logging.error('error occcured for ' + str(test['STND_TRRTRY_NM'].iloc[0]) + str(' ') + str(test['KEY'].iloc[0]))
+            logging.error('error occcured for ' + str(test['territory'].iloc[0]) + str(' ') + str(test['KEY'].iloc[0]))
             pass 
         
 
